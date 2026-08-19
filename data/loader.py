@@ -43,15 +43,25 @@ class MarketSpec:
 
 
 class DataLoader:
+    # Reihenfolge der Krypto-Boersen. Binance zuerst (schnell, in DE erreichbar), dann
+    # US-erreichbare Fallbacks. Bugfix: auf GitHub-Actions-Runnern (US-IP) sperrt Binance
+    # mit HTTP 451 ("restricted location") - der strikte Echtdaten-Modus uebersprang dann
+    # JEDES Symbol, der Cloud-Bot handelte nichts. Kraken/KuCoin/Coinbase liefern von dort
+    # echte 4h-Kerzen. Die erste Boerse, die Daten liefert, gewinnt.
+    DEFAULT_EXCHANGES = ["binance", "kraken", "kucoin", "coinbase"]
+
     def __init__(self, cache_dir: Path | str = CACHE_DIR, allow_synthetic: bool = True,
-                 max_retries: int = 4, retry_backoff: float = 2.0) -> None:
+                 max_retries: int = 4, retry_backoff: float = 2.0,
+                 exchange_ids: list[str] | None = None) -> None:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.allow_synthetic = allow_synthetic
         self.max_retries = max_retries
         self.retry_backoff = retry_backoff
         self.last_source: dict[str, str] = {}
-        self._exchange = None  # ccxt-Instanz wiederverwenden (teilt Rate-Limit-Zustand)
+        self.exchange_ids = list(exchange_ids) if exchange_ids else list(self.DEFAULT_EXCHANGES)
+        self.last_exchange: dict[str, str] = {}   # welche Boerse ein Symbol geliefert hat
+        self._exchanges: dict[str, object] = {}    # ccxt-Instanzen wiederverwenden
 
     # ---- oeffentliche API -------------------------------------------------
     def load(self, spec: MarketSpec, bars: int = 1500, refresh: bool = False) -> pd.DataFrame:
@@ -166,17 +176,55 @@ class DataLoader:
         return self.last_source.get(spec.slug, "unknown")
 
     # ---- Quellen ----------------------------------------------------------
+    def _get_exchange(self, ex_id: str):
+        import ccxt  # type: ignore
+        if ex_id not in self._exchanges:
+            self._exchanges[ex_id] = getattr(ccxt, ex_id)({"enableRateLimit": True})
+        return self._exchanges[ex_id]
+
+    @staticmethod
+    def _candidate_symbols(symbol: str) -> list[str]:
+        """Nicht jede Boerse fuehrt USDT-Paare; probiere zusaetzlich die USD-Variante
+        (z. B. ETH/USDT -> ETH/USD auf Kraken/Coinbase)."""
+        cands = [symbol]
+        if symbol.endswith("/USDT"):
+            cands.append(symbol[:-5] + "/USD")
+        elif symbol.endswith("/USD"):
+            cands.append(symbol + "T")
+        return cands
+
     def _fetch_ccxt(self, spec: MarketSpec, bars: int) -> pd.DataFrame | None:
         try:
             import ccxt  # type: ignore
         except ImportError:
             return None
-        if self._exchange is None:
-            self._exchange = ccxt.binance({"enableRateLimit": True})
-        raw = self._exchange.fetch_ohlcv(spec.symbol, timeframe=spec.timeframe, limit=min(bars, 1000))
-        df = pd.DataFrame(raw, columns=["ts", "open", "high", "low", "close", "volume"])
-        df.index = pd.to_datetime(df.pop("ts"), unit="ms", utc=True)
-        return df
+        last_err = None
+        for ex_id in self.exchange_ids:
+            try:
+                ex = self._get_exchange(ex_id)
+            except Exception as exc:  # noqa: BLE001 - Boerse nicht verfuegbar -> naechste
+                last_err = exc
+                continue
+            # Boerse ueberspringen, wenn sie den Timeframe nicht kann (z. B. Coinbase kein 4h).
+            tfs = getattr(ex, "timeframes", None)
+            if tfs and spec.timeframe not in tfs:
+                continue
+            for sym in self._candidate_symbols(spec.symbol):
+                try:
+                    raw = ex.fetch_ohlcv(sym, timeframe=spec.timeframe, limit=min(bars, 1000))
+                except ccxt.BadSymbol:
+                    continue                      # Symbolformat passt hier nicht -> naechstes Symbol
+                except Exception as exc:  # noqa: BLE001 - Geoblock/Netz -> naechste Boerse
+                    last_err = exc
+                    break
+                if raw:
+                    df = pd.DataFrame(raw, columns=["ts", "open", "high", "low", "close", "volume"])
+                    df.index = pd.to_datetime(df.pop("ts"), unit="ms", utc=True)
+                    self.last_exchange[spec.slug] = ex_id
+                    return df
+        if last_err is not None:
+            raise last_err   # damit _fetch_with_retry es sieht/loggt
+        return None
 
     def _fetch_yfinance(self, spec: MarketSpec, bars: int) -> pd.DataFrame | None:
         try:

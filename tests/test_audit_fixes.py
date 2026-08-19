@@ -274,3 +274,56 @@ def test_trip_holds_loop_and_resumes_after_reset(monkeypatch, tmp_path):
     risk.reset(confirm=True)          # bewusste Freigabe (wie reset_breaker)
     loop.tick()
     assert len(broker.get_positions()) == 1, "nach Reset muss wieder gehandelt werden"
+
+
+# ============================================================================
+# Bug 7 (Cloud-Geoblock): Krypto-Datenabruf muss auf die naechste Boerse
+#        ausweichen, wenn die erste sperrt (Binance HTTP 451 von US-Servern).
+# ============================================================================
+def test_ccxt_fetch_falls_back_to_next_exchange(monkeypatch, tmp_path):
+    import time as _t
+    from data.loader import DataLoader, MarketSpec
+
+    dl = DataLoader(cache_dir=tmp_path, allow_synthetic=False,
+                    exchange_ids=["binance", "kraken"])
+
+    class GeoBlocked:
+        timeframes = {"4h": "240"}
+        def fetch_ohlcv(self, sym, timeframe=None, limit=None):
+            raise RuntimeError("Service unavailable from a restricted location (451)")
+
+    class Works:
+        timeframes = {"4h": "240"}
+        def fetch_ohlcv(self, sym, timeframe=None, limit=None):
+            base = int(_t.time() * 1000)
+            step = 4 * 3600 * 1000
+            return [[base - (60 - i) * step, 1.0, 1.1, 0.9, 1.0, 100.0] for i in range(60)]
+
+    fakes = {"binance": GeoBlocked(), "kraken": Works()}
+    monkeypatch.setattr(dl, "_get_exchange", lambda ex_id: fakes[ex_id])
+
+    df = dl._fetch_ccxt(MarketSpec("crypto", "ETH/USDT", "4h"), bars=100)
+    assert df is not None and len(df) == 60, "Fallback auf zweite Boerse lieferte keine Daten"
+    assert dl.last_exchange["crypto_ETH-USDT_4h"] == "kraken"
+
+
+def test_ccxt_all_exchanges_blocked_raises(monkeypatch, tmp_path):
+    from data.loader import DataLoader, MarketSpec
+
+    dl = DataLoader(cache_dir=tmp_path, allow_synthetic=False, exchange_ids=["binance", "kraken"])
+
+    class Blocked:
+        timeframes = {"4h": "240"}
+        def fetch_ohlcv(self, sym, timeframe=None, limit=None):
+            raise RuntimeError("geoblock")
+
+    monkeypatch.setattr(dl, "_get_exchange", lambda ex_id: Blocked())
+    import pytest as _p
+    with _p.raises(Exception):
+        dl._fetch_ccxt(MarketSpec("crypto", "ETH/USDT", "4h"), bars=100)
+
+
+def test_candidate_symbols_adds_usd_variant():
+    from data.loader import DataLoader
+    assert DataLoader._candidate_symbols("ETH/USDT") == ["ETH/USDT", "ETH/USD"]
+    assert DataLoader._candidate_symbols("ADA/USD") == ["ADA/USD", "ADA/USDT"]

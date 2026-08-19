@@ -68,9 +68,12 @@ class Settings:
         return problems
 
     def data_loader(self):
-        """DataLoader passend zur Konfiguration - im strikten Modus ohne synthetischen Fallback."""
+        """DataLoader passend zur Konfiguration - im strikten Modus ohne synthetischen Fallback.
+        `data.exchanges` erlaubt es, die Krypto-Boersen-Reihenfolge zu setzen (Fallback,
+        falls eine Boerse - z. B. Binance von US-Servern - geoblockt ist)."""
         from data.loader import DataLoader
-        return DataLoader(allow_synthetic=not self.require_real)
+        exchanges = self.raw.get("data", {}).get("exchanges")
+        return DataLoader(allow_synthetic=not self.require_real, exchange_ids=exchanges)
 
     def risk_limits(self) -> RiskLimits:
         return RiskLimits(**self.raw.get("risk", {}))
