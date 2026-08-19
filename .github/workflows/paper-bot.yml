@@ -1,0 +1,52 @@
+name: paper-bot
+
+# Der "Puls" des Cloud-Bots: fuehrt regelmaessig EINEN Paper-Tick auf echten
+# Boersendaten aus und committet den aktualisierten Zustand (cloud/paper.db) + Report
+# zurueck ins Repo. Kein echtes Geld. Laeuft auf GitHubs Gratis-Runnern.
+#
+# Hinweis: GitHubs Cron ist "best effort" - Laeufe koennen sich um einige Minuten
+# verschieben oder unter Last ausfallen. Fuer 4h-Strategien ist das unkritisch.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"     # alle ~30 Minuten
+  workflow_dispatch: {}         # zusaetzlich manuell ausloesbar (Actions-Tab -> Run workflow)
+
+# Nie zwei Ticks gleichzeitig auf dieselbe DB (verhindert Commit-Konflikte).
+concurrency:
+  group: paper-bot
+  cancel-in-progress: false
+
+permissions:
+  contents: write               # noetig, um den aktualisierten Zustand zurueckzupushen
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Abhaengigkeiten installieren
+        run: pip install -r requirements-ci.txt
+
+      - name: Paper-Tick (echte Daten, simuliertes Geld)
+        env:
+          TRADING_DB: cloud/paper.db
+        run: python cli.py ci-tick
+
+      - name: Zustand + Report zurueck committen
+        run: |
+          git config user.name "paper-bot"
+          git config user.email "paper-bot@users.noreply.github.com"
+          git add -f cloud/paper.db BOT_STATUS_REPORT.md
+          if git diff --cached --quiet; then
+            echo "Keine Aenderung - nichts zu committen."
+          else
+            git commit -m "paper-bot: Tick $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
+            git pull --rebase --autostash origin ${GITHUB_REF_NAME} || true
+            git push
+          fi

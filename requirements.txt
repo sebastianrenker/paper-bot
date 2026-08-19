@@ -1,0 +1,24 @@
+﻿# Kern (Pflicht)
+pandas>=2.0
+numpy>=1.24
+PyYAML>=6.0
+
+# Dashboard
+streamlit>=1.49
+
+# Tests
+pytest>=7.4
+
+# Optionale Datenquellen - ohne sie laeuft alles auf synthetischen Daten
+ccxt>=4.2          # Krypto (Backtest-Daten + spaeter Live)
+yfinance>=0.2.40   # US-Aktien und Forex
+
+# Sicherheit: verschluesselter Schluessel-Tresor (Geldschutz)
+cryptography>=42.0
+
+# Optional fuer Scheduling des Paper-Loops
+APScheduler>=3.10
+
+# Packaging als .exe (nur fuer den Build noetig)
+pyinstaller>=6.3
+

@@ -1,0 +1,102 @@
+# Trading-Dashboard Konfiguration
+#
+# WICHTIG: mode ist absichtlich auf "paper" voreingestellt. "live" allein reicht
+# NICHT aus - zusaetzlich ist der manuelle Bestaetigungsflow noetig
+# (python -m cli enable-live). Siehe README, Abschnitt "Live-Modus".
+
+mode: paper          # backtest | paper | live
+
+# Datenquelle. require_real: true erzwingt ECHTE Boersendaten - schlaegt ein Abruf
+# (auch nach Retries) fehl, wird die Kombination UEBERSPRUNGEN statt synthetisch
+# ersetzt. So enthaelt die Auswertung garantiert nur echte Daten (0 synthetisch).
+data:
+  require_real: true
+
+capital:
+  initial: 500.0
+  currency: USD
+
+risk:
+  risk_per_trade: 0.01          # 1 % des Kapitals pro Trade
+  max_open_positions: 3
+  max_daily_loss: 0.03          # 3 % Tagesverlust -> Circuit Breaker -> zurueck auf paper
+  max_total_drawdown: 0.15      # 15 % Gesamtdrawdown -> Kill-Switch
+  max_position_notional_pct: 0.25
+  require_stop_loss: true
+
+backtest:
+  stop_atr_mult: 2.0
+  take_profit_r: 2.0
+  atr_period: 14
+  fee_rate: 0.0006
+  slippage_rate: 0.0005
+  allow_short: true
+
+evaluation:
+  bars: 1500
+  rolling_windows_days: [90, 180, 365]
+  walk_forward:
+    train_bars: 500
+    test_bars: 125
+  monte_carlo:
+    runs: 1000
+    ruin_threshold: 0.5
+
+# Welche Strategie auf welchem Markt/Timeframe evaluiert wird.
+# Breites Universe = mehr Chancen, validierte UNKORRELIERTE Vorteile fuers Portfolio
+# zu finden. Mehr Symbole/Timeframes = laengere Auswertung und mehr Datenabrufe.
+#
+# auto_discover: true erweitert `symbols` automatisch um die liquidesten Symbole der
+# Boerse (siehe data/discovery.py) - nach 24h-Handelsvolumen, NICHT nach Hype/Trend.
+# Ein Memecoin taucht hier genauso auf wie ein Large-Cap, einfach weil er liquide
+# genug ist - alle entdeckten Symbole durchlaufen danach dieselbe
+# Walk-Forward-Validierung und dieselben Risikolimits wie manuell eingetragene.
+universe:
+  crypto:
+    symbols: ["BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT", "XRP/USDT",
+              "ADA/USDT", "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "LTC/USDT"]
+    timeframes: ["1h", "4h"]
+    auto_discover: true
+    auto_discover_top_n: 30
+    auto_discover_min_volume_usd: 5000000
+    auto_discover_refresh_minutes: 60
+  stocks:
+    symbols: ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "JPM"]
+    timeframes: ["1d"]
+    auto_discover: true
+    auto_discover_top_n: 25
+  forex:
+    symbols: ["EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X"]
+    timeframes: ["1d"]
+
+# Leere Liste = alle registrierten Strategien.
+strategies: []
+
+# Parameter-Overrides je Strategie (optional).
+strategy_params:
+  ema_crossover:
+    fast: 9
+    slow: 21
+  rsi_mean_reversion:
+    period: 14
+
+# Grid fuer die Walk-Forward-Optimierung (klein halten - grosse Grids ueberfitten).
+optimization_grid:
+  ema_crossover:
+    fast: [8, 9, 12]
+    slow: [21, 26, 50]
+  rsi_mean_reversion:
+    period: [10, 14, 21]
+  supertrend:
+    period: [7, 10, 14]
+    mult: [2.0, 3.0]
+  donchian_breakout:
+    entry_period: [20, 30, 55]
+  macd_momentum:
+    fast: [8, 12]
+    slow: [21, 26]
+  dmi_trend:
+    adx_min: [20, 25, 30]
+
+database:
+  path: "trading.db"

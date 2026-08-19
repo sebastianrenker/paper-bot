@@ -1,0 +1,7 @@
+# Minimal-Abhaengigkeiten fuer den GitHub-Actions-Paper-Tick (cli.py ci-tick).
+# Bewusst OHNE streamlit/pyinstaller/cryptography - die braucht der Tick nicht.
+pandas>=2.0
+numpy>=1.24
+PyYAML>=6.0
+ccxt>=4.2
+yfinance>=0.2.40

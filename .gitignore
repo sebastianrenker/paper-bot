@@ -1,0 +1,23 @@
+.env
+*.db
+*.db-wal
+*.db-shm
+# Ausnahme: die schlanke Cloud-Paper-DB WIRD committet (der CI-Bot pflegt sie).
+!cloud/paper.db
+__pycache__/
+*.pyc
+.pytest_cache/
+data/cache/
+.venv/
+venv/
+build/
+dist/
+*.spec
+secrets.vault
+config/learned_params.yaml
+build_exe.log
+
+# Laufzeit-Logs / PID
+*.log
+bot.pid
+bot_supervisor.log

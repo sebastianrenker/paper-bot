@@ -1,0 +1,11 @@
+combos:
+- strategy: roc_momentum
+  market: crypto
+  symbol: ADA/USDT
+  timeframe: 4h
+  params: {}
+- strategy: connors_rsi2
+  market: crypto
+  symbol: ETH/USDT
+  timeframe: 4h
+  params: {}
