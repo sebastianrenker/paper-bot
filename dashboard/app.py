@@ -47,10 +47,10 @@ def main() -> None:
     settings = load_settings(DEFAULT_CONFIG_PATH)
     store = get_store(str(settings.db_path))
 
-    st.title("Trading-Strategie-Dashboard")
+    st.title("📊 Trading-Bot — Live-Übersicht")
     st.caption(
-        "Analysewerkzeug, keine Finanzberatung. Backtests sind keine Garantie fuer "
-        "zukuenftige Ergebnisse; Handel kann zum Totalverlust fuehren."
+        "Analysewerkzeug mit **Spielgeld**, keine Finanzberatung. Kein echtes Geld im Spiel. "
+        "Vergangene Ergebnisse sind keine Garantie für die Zukunft."
     )
 
     if "killed" not in st.session_state:
@@ -59,16 +59,21 @@ def main() -> None:
     mode = Mode.PAPER if st.session_state.killed else settings.effective_mode
     mode_banner(mode, st.session_state.killed, "Kill-Switch im UI ausgeloest")
 
-    with st.expander("So funktioniert's & Sicherheit (kurz lesen)", expanded=False):
+    import os as _os
+    _readonly = bool(_os.environ.get("CLOUD_READONLY"))
+    with st.expander("👋 Was ist das hier? (in 20 Sekunden erklärt)", expanded=_readonly):
         st.markdown(
-            "- **Dein Geld ist sicher.** Es wird mit Spielgeld gehandelt — echtes Geld ist "
-            "gesperrt und nicht möglich. Du kannst nichts falsch machen.\n"
-            "- **Kein Programm garantiert Gewinn.** Dieses Tool zeigt ehrlich, welche "
-            "Strategien in der Vergangenheit funktioniert haben — inklusive der Verluste.\n"
-            "- **Tab „Live Paper-Trader“**: hier siehst du live, was der Bot macht.\n"
-            "- **Roter „KILL-SWITCH“-Knopf** (links): stoppt sofort alles.\n"
-            "- Grüne Zeilen im Ranking sind vielversprechend, rote nicht — aber nur "
-            "„statistisch belastbare“ (viele Trades) sind aussagekräftig."
+            "Dieser Bot testet **Handels-Strategien mit Spielgeld** auf echten Börsendaten — "
+            "damit man sieht, was funktioniert, **ohne echtes Geld zu riskieren**.\n\n"
+            "**So liest du die Seite — die 3 wichtigsten Tabs oben:**\n"
+            "1. **Live Paper-Trader** — was der Bot *gerade jetzt* macht: Kapital, offene "
+            "Positionen, ein Kurs-Chart mit den Kauf-/Verkauf-Punkten.\n"
+            "2. **Ranking** — welche Strategie auf welchem Coin am besten abschneidet. "
+            "🟢 grün = vielversprechend, 🟡 gelb = mittel, 🔴 rot = eher nicht.\n"
+            "3. **Portfolio** — die besten, sich ergänzenden Strategien zusammen (streut das Risiko).\n\n"
+            "**Wichtig & ehrlich:** Kein Programm garantiert Gewinn. Nur Zeilen mit **vielen "
+            "Trades** sind aussagekräftig; wenige Trades = Zufall. Bei „**Robust bei doppelten "
+            "Kosten? ✅**\" hält der Vorteil auch mit höheren Gebühren."
         )
 
     # ---- Sidebar: Status und Kill-Switch ---------------------------------
@@ -135,11 +140,18 @@ def main() -> None:
 
 def render_ranking(df: pd.DataFrame) -> None:
     st.subheader("Welche Strategie funktioniert auf welchem Markt gerade?")
-    st.caption(
-        "Score = 0.35 x Edge (OOS-Erwartungswert) + 0.30 x Robustheit (Monte-Carlo) + "
-        "0.20 x Regime-Passung + 0.15 x Recency, multipliziert mit einem Konfidenzfaktor "
-        "aus der Trade-Anzahl. Keine Black Box - die Formel steht in stats/score.py."
+    st.info(
+        "**So liest du diese Tabelle:** Jede Zeile = eine Strategie auf einem Coin. "
+        "**Score 0–100** (höher = besser), **Ampel** 🟢🟡🔴. Achte auf die Spalte **Trades** — "
+        "nur bei vielen Trades ist die Zahl aussagekräftig, wenige = Zufall.",
+        icon="💡",
     )
+    with st.expander("Wie wird der Score genau berechnet? (für Interessierte)"):
+        st.caption(
+            "Score = 0.35 × Edge (Out-of-Sample-Erwartung) + 0.30 × Robustheit (Monte-Carlo) + "
+            "0.20 × Regime-Passung + 0.15 × Recency, mal Konfidenz (Trade-Anzahl), mal "
+            "Trial-Abschlag (Overfitting) mal Kosten-Robustheit. Keine Black Box — Formel in stats/score.py."
+        )
 
     c1, c2, c3 = st.columns(3)
     markets = c1.multiselect("Markt", sorted(df["market"].unique()), default=list(df["market"].unique()))
