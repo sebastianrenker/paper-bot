@@ -52,10 +52,23 @@ class Portfolio:
     validated: bool = False
     diversification_note: str = ""
     note: str = ""
+    target_vol: float | None = None    # gewuenschte annualisierte Volatilitaet (falls gesetzt)
+    realized_vol: float = 0.0          # tatsaechliche annual. Vola VOR dem Targeting
+    leverage: float = 1.0             # Skalierung der Gesamt-Exposure fuers Vol-Target
 
     @property
     def n_members(self) -> int:
         return len(self.members)
+
+
+def annualized_vol(returns: pd.Series, timeframe: str) -> float:
+    """Annualisierte Volatilitaet einer Renditereihe (Std x sqrt(Perioden/Jahr))."""
+    from stats.metrics import PERIODS_PER_YEAR
+    r = returns.dropna()
+    if len(r) < 2:
+        return 0.0
+    ppy = PERIODS_PER_YEAR.get(timeframe, 8_760)
+    return float(r.std(ddof=0) * np.sqrt(ppy))
 
 
 def passes_gates(row: dict, gates: QualityGates) -> bool:
@@ -122,14 +135,21 @@ def inverse_vol_weights(returns: dict[str, pd.Series], selected: list[str]) -> d
     return {k: v / total for k, v in inv.items()}
 
 
-def combine_equity(
-    returns: dict[str, pd.Series], weights: dict[str, float], initial_capital: float = 10_000.0,
-) -> pd.Series:
+def combined_returns(returns: dict[str, pd.Series], weights: dict[str, float]) -> pd.Series:
     if not weights:
         return pd.Series(dtype=float)
     frame = pd.DataFrame({k: returns[k] for k in weights}).fillna(0.0)
-    combined = sum(frame[k] * w for k, w in weights.items())
-    return initial_capital * (1.0 + combined).cumprod()
+    return sum(frame[k] * w for k, w in weights.items())
+
+
+def combine_equity(
+    returns: dict[str, pd.Series], weights: dict[str, float], initial_capital: float = 10_000.0,
+    leverage: float = 1.0,
+) -> pd.Series:
+    combined = combined_returns(returns, weights)
+    if combined.empty:
+        return pd.Series(dtype=float)
+    return initial_capital * (1.0 + combined * leverage).cumprod()
 
 
 def build_portfolio(
@@ -143,6 +163,7 @@ def build_portfolio(
     initial_capital: float = 10_000.0,
     timeframe: str = "1h",
     illustrative_if_empty: bool = True,
+    target_vol: float | None = None,
 ) -> Portfolio:
     gates = gates or QualityGates()
     qualified = [lbl for lbl, row in rows_by_label.items() if passes_gates(row, gates)]
@@ -170,7 +191,16 @@ def build_portfolio(
     if not selected:
         selected = candidates[:1]
     weights = inverse_vol_weights(returns_by_label, selected)
-    equity = combine_equity(returns_by_label, weights, initial_capital)
+
+    # Volatility-Targeting (optional): Gesamt-Exposure so skalieren, dass die
+    # Portfolio-Volatilitaet ~ target_vol trifft. Reduziert bei ruhigen Phasen NICHT,
+    # deckelt aber die Hebelung (0.2..1.5), damit es im Paper-Kontext ehrlich bleibt.
+    realized_vol = annualized_vol(combined_returns(returns_by_label, weights), timeframe)
+    leverage = 1.0
+    if target_vol and realized_vol > 0:
+        leverage = float(np.clip(target_vol / realized_vol, 0.2, 1.5))
+
+    equity = combine_equity(returns_by_label, weights, initial_capital, leverage=leverage)
     metrics = compute_metrics(
         _portfolio_r_multiples(r_multiples_by_label, weights), equity, timeframe
     )
@@ -194,10 +224,14 @@ def build_portfolio(
         f"Portfolio-Drawdown {port_dd:.1%} vs. Durchschnitt der Einzel-Drawdowns "
         f"{avg_single_dd:.1%} - Diversifikation glaettet das Risiko."
     )
+    if target_vol:
+        div_note += (f" Vol-Target {target_vol:.0%}: gemessene Vola {realized_vol:.0%} "
+                     f"-> Hebel {leverage:.2f}.")
 
     return Portfolio(
         members=members, equity_curve=equity, metrics=metrics, correlation=corr.loc[selected, selected],
         validated=validated, diversification_note=div_note, note=note,
+        target_vol=target_vol, realized_vol=realized_vol, leverage=leverage,
     )
 
 

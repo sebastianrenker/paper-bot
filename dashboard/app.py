@@ -201,6 +201,17 @@ def render_detail(store: Store, df: pd.DataFrame) -> None:
     c3.metric("Profit-Faktor", f"{row['profit_factor']:.2f}")
     c4.metric("Max Drawdown", f"{row['max_drawdown']:.1%}")
 
+    # Ehrlichkeits-Signale (aus dem Score): Kosten-Robustheit + Trial-Abschlag
+    cr = score.get("cost_robust")
+    tf_factor = score.get("trial_factor")
+    d1, d2 = st.columns(2)
+    if cr is not None:
+        d1.metric("Robust bei doppelten Kosten?", "JA ✅" if cr else "NEIN ⚠️",
+                  help="Macht der Vorteil auch mit Gebühr/Slippage ×2 noch Geld?")
+    if tf_factor is not None:
+        d2.metric("Trial-Abschlag (Overfitting)", f"×{tf_factor:.2f}",
+                  help="Score-Abschlag für die Zahl getesteter Varianten (Deflated-Sharpe-Idee).")
+
     for w in payload.get("warnings", []):
         st.warning(w)
 
@@ -518,7 +529,8 @@ def _render_trade_chart(store: Store, settings, audit: pd.DataFrame, symbol: str
 
 
 @st.cache_data(show_spinner="Portfolio wird berechnet (Backtests laufen) ...")
-def _build_portfolio_cached(db_path: str, run_at_key: str, max_positions: int, max_corr: float):
+def _build_portfolio_cached(db_path: str, run_at_key: str, max_positions: int, max_corr: float,
+                            target_vol: float = 0.0):
     """Baut das Portfolio aus den gespeicherten Auswertungen. Gecacht ueber den
     juengsten Auswertungszeitpunkt, damit nicht bei jedem Klick neu gerechnet wird."""
     from cli import _backtest_returns
@@ -532,9 +544,11 @@ def _build_portfolio_cached(db_path: str, run_at_key: str, max_positions: int, m
     gates = QualityGates()
     candidates, _ = candidate_labels(rows, gates)
     returns, r_mult = _backtest_returns(rows, candidates, settings)  # nur Kandidaten -> schnell
+    tf = evals.iloc[0]["timeframe"] if len(evals) else "1h"
     return build_portfolio(rows, returns, r_mult, gates=gates,
                            max_positions=max_positions, max_correlation=max_corr,
-                           initial_capital=settings.initial_capital)
+                           initial_capital=settings.initial_capital, timeframe=tf,
+                           target_vol=(target_vol or None))
 
 
 def render_portfolio(settings, store: Store, df: pd.DataFrame) -> None:
@@ -545,9 +559,12 @@ def render_portfolio(settings, store: Store, df: pd.DataFrame) -> None:
         "keine Gewinner. Nur Kombinationen mit out-of-sample validiertem Vorteil "
         "(positive Erwartung, Effizienz >= 0.5, genug Trades, echte Daten) sind handelbar."
     )
-    c1, c2 = st.columns(2)
+    c1, c2, c3 = st.columns(3)
     max_pos = c1.slider("Max. Positionen", 2, 10, 6)
     max_corr = c2.slider("Max. Korrelation", 0.1, 0.9, 0.6, 0.05)
+    target_vol = c3.slider("Vol-Ziel (0 = aus)", 0.0, 0.5, 0.0, 0.05,
+                           help="Steuert die Gesamt-Schwankung auf ein Ziel (annualisiert). "
+                                "0 = keine Vol-Steuerung.")
     if st.button("Portfolio berechnen", type="primary"):
         st.session_state.pf_requested = True
     if not st.session_state.get("pf_requested"):
@@ -555,7 +572,7 @@ def render_portfolio(settings, store: Store, df: pd.DataFrame) -> None:
         return
 
     run_key = str(df["run_at"].max()) if "run_at" in df else "0"
-    pf = _build_portfolio_cached(str(settings.db_path), run_key, max_pos, max_corr)
+    pf = _build_portfolio_cached(str(settings.db_path), run_key, max_pos, max_corr, target_vol)
 
     if pf.validated:
         st.success(pf.note)
@@ -585,6 +602,12 @@ def render_portfolio(settings, store: Store, df: pd.DataFrame) -> None:
     k2.metric("Max Drawdown", f"{m.max_drawdown:.1%}")
     k3.metric("Erwartung/Trade", f"{m.expectancy_r:+.3f} R")
     k4.metric("Gesamtrendite", f"{m.total_return:+.1%}")
+    if pf.target_vol:
+        v1, v2, v3 = st.columns(3)
+        v1.metric("Vol-Ziel", f"{pf.target_vol:.0%}")
+        v2.metric("Gemessene Vola", f"{pf.realized_vol:.0%}")
+        v3.metric("Hebel", f"×{pf.leverage:.2f}",
+                  help="<1 = Exposure gesenkt, >1 = erhöht, um das Vol-Ziel zu treffen.")
     st.caption(pf.diversification_note)
 
     if len(pf.correlation) > 1:

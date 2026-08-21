@@ -78,3 +78,42 @@ def test_walk_forward_efficiency_warning(ohlcv):
     assert wf.efficiency < 0.5
     s = compute_score(wf, monte_carlo(np.full(100, 0.02), n_runs=300), detect_regime(ohlcv), "trend")
     assert any("Overfitting" in w for w in s.warnings)
+
+
+# ---- Ehrlichere Bewertung: Trial-Abschlag + Kosten-Robustheit ------------
+def test_deflated_trial_factor_monotonic():
+    from stats.score import deflated_trial_factor
+    assert deflated_trial_factor(1) == 1.0
+    assert deflated_trial_factor(10) < 1.0
+    assert deflated_trial_factor(100) < deflated_trial_factor(10)
+    assert deflated_trial_factor(10_000) >= 0.4  # Boden
+
+
+def test_score_trial_penalty_reduces_total(ohlcv):
+    regime = detect_regime(ohlcv)
+    wf = _wf(0.2, 120)
+    mc = monte_carlo(np.full(120, 0.2), n_runs=300)
+    one = compute_score(wf, mc, regime, "trend", trials=1)
+    many = compute_score(wf, mc, regime, "trend", trials=500)
+    assert many.total < one.total
+    assert many.trial_factor < 1.0
+    assert any("Varianten getestet" in w for w in many.warnings)
+
+
+def test_score_cost_robustness_penalty(ohlcv):
+    regime = detect_regime(ohlcv)
+    wf = _wf(0.2, 120)
+    mc = monte_carlo(np.full(120, 0.2), n_runs=300)
+    robust = compute_score(wf, mc, regime, "trend", cost_robust=True)
+    fragile = compute_score(wf, mc, regime, "trend", cost_robust=False)
+    assert fragile.total < robust.total
+    assert any("DOPPELTEN Kosten" in w for w in fragile.warnings)
+
+
+def test_score_backward_compatible_defaults(ohlcv):
+    """Ohne die neuen Argumente aendert sich der Score nicht (trials=1, cost None)."""
+    regime = detect_regime(ohlcv)
+    wf = _wf(0.2, 120)
+    mc = monte_carlo(np.full(120, 0.2), n_runs=300)
+    s = compute_score(wf, mc, regime, "trend")
+    assert s.trial_factor == 1.0 and s.cost_robust is None

@@ -54,7 +54,8 @@ evaluation:
 universe:
   crypto:
     symbols: ["BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT", "XRP/USDT",
-              "ADA/USDT", "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "LTC/USDT"]
+              "ADA/USDT", "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "LTC/USDT",
+              "DOT/USDT", "MATIC/USDT", "ATOM/USDT", "UNI/USDT", "NEAR/USDT"]
     timeframes: ["1h", "4h"]
     auto_discover: true
     auto_discover_top_n: 30

@@ -33,6 +33,8 @@ class ScoreBreakdown:
     components: dict[str, float] = field(default_factory=dict)   # roh, 0..1
     contributions: dict[str, float] = field(default_factory=dict)  # gewichtet, 0..1
     confidence_factor: float = 0.0
+    trial_factor: float = 1.0          # Abschlag fuer die Zahl getesteter Varianten
+    cost_robust: bool | None = None    # ueberlebt der Vorteil doppelte Kosten?
     n_trades: int = 0
     traffic_light: str = "red"
     explanation: str = ""
@@ -42,9 +44,20 @@ class ScoreBreakdown:
         return {
             "total": self.total, "traffic_light": self.traffic_light,
             "n_trades": self.n_trades, "confidence_factor": self.confidence_factor,
+            "trial_factor": self.trial_factor, "cost_robust": self.cost_robust,
             **{f"c_{k}": v for k, v in self.components.items()},
             "explanation": self.explanation, "warnings": "; ".join(self.warnings),
         }
+
+
+def deflated_trial_factor(trials: int) -> float:
+    """Abschlag fuer Selektions-Verzerrung (Idee der Deflated Sharpe Ratio, Bailey & de
+    Prado): je mehr Varianten man durchprobiert, desto wahrscheinlicher ist der beste
+    Treffer nur Zufall. Kein exakter DSR, aber ein transparenter, monoton fallender
+    Haircut: 1 Versuch -> 1.0, 10 -> ~0.85, 100 -> ~0.70, 1000 -> ~0.55 (Boden 0.4)."""
+    if trials <= 1:
+        return 1.0
+    return float(np.clip(1.0 - 0.15 * np.log10(trials), 0.4, 1.0))
 
 
 def compute_score(
@@ -54,6 +67,8 @@ def compute_score(
     strategy_category: str,
     *,
     weights: dict[str, float] | None = None,
+    trials: int = 1,
+    cost_robust: bool | None = None,
 ) -> ScoreBreakdown:
     w = {**WEIGHTS, **(weights or {})}
     warnings: list[str] = []
@@ -89,7 +104,24 @@ def compute_score(
             f"Walk-Forward-Effizienz {wf.efficiency:.2f} < 0.5 - deutlicher Overfitting-Verdacht."
         )
 
-    total = float(sum(contributions.values()) * confidence_factor * 100)
+    # --- Trial-Count-Abschlag (Overfitting/Selektions-Verzerrung) -----------
+    trial_factor = deflated_trial_factor(trials)
+    if trials > 1 and trial_factor < 1.0:
+        warnings.append(
+            f"{trials} Varianten getestet - Score um Faktor {trial_factor:.2f} abgewertet "
+            f"(Selektions-Verzerrung, Deflated-Sharpe-Idee)."
+        )
+
+    # --- Kosten-Robustheit: ueberlebt der Vorteil doppelte Kosten? ----------
+    cost_factor = 1.0
+    if cost_robust is False:
+        cost_factor = 0.5
+        warnings.append(
+            "Vorteil verschwindet bei DOPPELTEN Kosten (Gebuehr/Slippage x2) - fragil, "
+            "vermutlich nicht robust handelbar."
+        )
+
+    total = float(sum(contributions.values()) * confidence_factor * trial_factor * cost_factor * 100)
     if total >= 60:
         light = "green"
     elif total >= 35:
@@ -100,13 +132,13 @@ def compute_score(
     explanation = (
         f"Score {total:.1f}/100 = ("
         + " + ".join(f"{k} {components[k]:.2f}x{w[k]:.2f}" for k in components)
-        + f") x Konfidenz {confidence_factor:.2f} x 100"
+        + f") x Konfidenz {confidence_factor:.2f} x Trials {trial_factor:.2f} x Kosten {cost_factor:.2f} x 100"
     )
 
     return ScoreBreakdown(
         total=total, components=components, contributions=contributions,
-        confidence_factor=confidence_factor, n_trades=n, traffic_light=light,
-        explanation=explanation, warnings=warnings,
+        confidence_factor=confidence_factor, trial_factor=trial_factor, cost_robust=cost_robust,
+        n_trades=n, traffic_light=light, explanation=explanation, warnings=warnings,
     )
 
 

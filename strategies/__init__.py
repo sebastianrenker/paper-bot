@@ -17,6 +17,7 @@ from strategies.ichimoku_trend import IchimokuTrend
 from strategies.keltner_pullback import KeltnerPullback
 from strategies.macd_momentum import MacdMomentum
 from strategies.opening_range_breakout import OpeningRangeBreakout
+from strategies.psar_trend import PsarTrend
 from strategies.roc_momentum import RocMomentum
 from strategies.rsi_mean_reversion import RsiMeanReversion
 from strategies.stochastic_reversion import StochasticReversion
@@ -45,6 +46,7 @@ REGISTRY: dict[str, type[Strategy]] = {
         WilliamsRReversion,
         CciReversion,
         RocMomentum,
+        PsarTrend,
     )
 }
 

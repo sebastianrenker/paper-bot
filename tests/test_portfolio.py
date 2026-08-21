@@ -105,3 +105,41 @@ def test_build_flags_illustrative_when_nothing_qualifies():
     assert not pf.validated
     assert "ILLUSTRATIV" in pf.note
     assert pf.n_members >= 1  # trotzdem zur Veranschaulichung befuellt
+
+
+# ---- Volatility-Targeting ------------------------------------------------
+def test_annualized_vol_reasonable():
+    import numpy as np
+    import pandas as pd
+    from stats.portfolio import annualized_vol
+    idx = pd.date_range("2024-01-01", periods=500, freq="1h", tz="UTC")
+    r = pd.Series(np.random.default_rng(0).normal(0, 0.01, 500), index=idx)
+    v = annualized_vol(r, "1h")
+    assert 0.5 < v < 1.5   # 0.01*sqrt(8760) ~ 0.94
+
+
+def test_vol_targeting_scales_leverage_down_for_high_vol():
+    """Hoch-volatiles Portfolio + niedriges Vol-Target -> Hebel < 1 (Exposure runter)."""
+    import numpy as np
+    import pandas as pd
+    from stats.portfolio import QualityGates, build_portfolio
+    idx = pd.date_range("2024-01-01", periods=400, freq="1h", tz="UTC")
+    rng = np.random.default_rng(3)
+    rows, returns, r_mult = {}, {}, {}
+    for i in range(3):
+        lbl = f"s{i} | X | 1h"
+        rows[lbl] = {"score": 80 - i, "n_trades": 60, "expectancy_r": 0.1, "wf_efficiency": 0.8,
+                     "traffic_light": "green", "data_source": "live", "strategy": f"s{i}",
+                     "symbol": "X", "timeframe": "1h", "max_drawdown": 0.1}
+        returns[lbl] = pd.Series(rng.normal(0.0002, 0.03, 400), index=idx)  # hohe Vola
+        r_mult[lbl] = rng.normal(0.1, 1.0, 60)
+    pf_plain = build_portfolio(rows, returns, r_mult, gates=QualityGates(), timeframe="1h")
+    pf_vt = build_portfolio(rows, returns, r_mult, gates=QualityGates(), timeframe="1h", target_vol=0.20)
+    assert pf_plain.leverage == 1.0
+    assert pf_vt.leverage < 1.0, "Vol-Target sollte die Exposure einer hoch-vola Strategie senken"
+    assert pf_vt.realized_vol > 0.20   # gemessene Vola liegt ueber dem Ziel
+    # Zielerreichung: die Vola der gehebelten Kurve ist naeher am Ziel als ungehebelt
+    from stats.portfolio import annualized_vol
+    v_plain = annualized_vol(pf_plain.equity_curve.pct_change(), "1h")
+    v_vt = annualized_vol(pf_vt.equity_curve.pct_change(), "1h")
+    assert abs(v_vt - 0.20) < abs(v_plain - 0.20)

@@ -171,6 +171,39 @@ def supertrend(df: pd.DataFrame, period: int = 10, mult: float = 3.0):
     return pd.Series(trend, index=df.index), pd.Series(direction, index=df.index)
 
 
+def psar(df: pd.DataFrame, af_start: float = 0.02, af_step: float = 0.02, af_max: float = 0.2):
+    """Parabolic SAR (Wilder). Gibt (sar, trend) zurueck, trend = +1 (long) / -1 (short).
+    Kausal (jede Zeile nutzt nur Werte bis einschliesslich dieser Zeile) -> look-ahead-frei."""
+    high = df["high"].to_numpy()
+    low = df["low"].to_numpy()
+    n = len(df)
+    sar = np.zeros(n)
+    trend = np.ones(n, dtype=int)
+    if n == 0:
+        return pd.Series(sar, index=df.index), pd.Series(trend, index=df.index)
+    bull = True
+    af = af_start
+    ep = high[0]
+    cur = low[0]
+    for i in range(1, n):
+        cur = cur + af * (ep - cur)
+        if bull:
+            cur = min(cur, low[i - 1], low[i - 2] if i >= 2 else low[i - 1])
+            if high[i] > ep:
+                ep = high[i]; af = min(af + af_step, af_max)
+            if low[i] < cur:                 # Trendwechsel nach Short
+                bull = False; cur = ep; ep = low[i]; af = af_start
+        else:
+            cur = max(cur, high[i - 1], high[i - 2] if i >= 2 else high[i - 1])
+            if low[i] < ep:
+                ep = low[i]; af = min(af + af_step, af_max)
+            if high[i] > cur:                # Trendwechsel nach Long
+                bull = True; cur = ep; ep = high[i]; af = af_start
+        sar[i] = cur
+        trend[i] = 1 if bull else -1
+    return pd.Series(sar, index=df.index), pd.Series(trend, index=df.index)
+
+
 def williams_r(df: pd.DataFrame, period: int = 14) -> pd.Series:
     """Williams %R, oszilliert zwischen 0 (Hoch) und -100 (Tief)."""
     hh = df["high"].rolling(period).max()

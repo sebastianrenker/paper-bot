@@ -111,8 +111,21 @@ def evaluate_combo(
         ruin_threshold=mc_cfg.get("ruin_threshold", 0.5),
     )
 
+    # Kosten-Robustheit: macht der Vorteil auch bei DOPPELTEN Gebuehren/Slippage noch
+    # Geld? (Praktiker-Faustregel gegen zu optimistische Backtests.) Ein extra Backtest.
+    from dataclasses import replace
+    cfg2 = replace(cfg, fee_rate=cfg.fee_rate * 2, slippage_rate=cfg.slippage_rate * 2)
+    bt2 = run_backtest(cls(**params), ohlcv, market=market, symbol=symbol,
+                       timeframe=timeframe, config=cfg2)
+    m2 = compute_metrics(bt2.r_multiples, bt2.equity_curve, timeframe)
+    cost_robust = bool(m2.n_trades > 0 and m2.expectancy_r > 0)
+
+    # Trial-Zahl fuer den Deflated-Sharpe-Abschlag = wie viele Kombinationen insgesamt
+    # gerankt werden (Selektions-Verzerrung ueber das ganze Universe).
+    n_trials = max(1, len(settings.universe()) * len(settings.strategy_names()))
+
     regime = detect_regime(ohlcv)
-    score = compute_score(wf, mc, regime, cls.category)
+    score = compute_score(wf, mc, regime, cls.category, trials=n_trials, cost_robust=cost_robust)
     if data_source == "synthetic":
         score.warnings.append(
             "SYNTHETISCHE Daten - dieses Ergebnis hat keinerlei Aussagekraft fuer echte Maerkte."
