@@ -21,3 +21,8 @@ build_exe.log
 *.log
 bot.pid
 bot_supervisor.log
+
+# Cloud-Eval-Helfer (einmalig, nicht ins Repo)
+run_eval_for_cloud.py
+merge_evals_to_cloud.py
+cloud_evals.db*
