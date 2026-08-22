@@ -447,6 +447,47 @@ def render_live_paper(store: Store, settings) -> None:
                        "Rot/Minus = gekostet. Bei sehr wenigen Trades ist das noch Zufall, "
                        "kein Beweis — erst viele Trades zeigen den echten Trend.")
 
+    # ---- Gebühren & Steuern realistisch gerechnet ------------------------
+    bt = settings.raw.get("backtest", {})
+    fee_r = float(bt.get("fee_rate", 0.0006))
+    slip_r = float(bt.get("slippage_rate", 0.0005))
+    est_costs = 0.0
+    if not trades_df.empty:
+        notional = (trades_df["entry_price"] + trades_df["exit_price"]) * trades_df["qty"].abs()
+        est_costs = float((notional * (fee_r + slip_r)).sum())
+    FREIGRENZE = 1000.0  # §23 EStG (privates Veraeusserungsgeschaeft, Krypto), Stand 2024/25
+    with st.expander("💸 Gebühren & Steuern — realistisch gerechnet", expanded=False):
+        st.markdown(
+            f"**Handelsgebühren:** {fee_r*100:.2f} % Gebühr + {slip_r*100:.2f} % Slippage **pro Order** "
+            f"(je einmal beim Kauf und beim Verkauf). Diese Kosten sind in den Euro-Zahlen oben "
+            f"**schon abgezogen** — bisher rund **{est_costs:,.2f} €** an Gebühren/Slippage."
+        )
+        st.markdown(
+            f"**Steuern (Deutschland, privat):** Krypto-Gewinne mit unter 1 Jahr Haltedauer sind ein "
+            f"privates Veräußerungsgeschäft (§23 EStG) und werden mit deinem **persönlichen "
+            f"Einkommensteuersatz** versteuert. Es gilt eine **Freigrenze von {FREIGRENZE:,.0f} € pro "
+            f"Jahr**: bleibt der Gesamt-Jahresgewinn darunter, ist er **komplett steuerfrei** — "
+            f"liegt er darüber, wird der **ganze** Gewinn steuerpflichtig (nicht nur der Teil oberhalb)."
+        )
+        rate = st.slider("Dein persönlicher Steuersatz in % (nur relevant über der Freigrenze)",
+                         0, 45, 30, help="Grober Grenzsteuersatz, ohne Soli/Kirchensteuer.") / 100
+        taxable = realized if realized > FREIGRENZE else 0.0  # nur realisierte Gewinne sind steuerbar
+        tax = taxable * rate
+        if realized <= FREIGRENZE:
+            st.success(
+                f"Aktuell **0,00 € Steuer** — dein realisierter Gewinn ({realized:+,.2f} €) liegt "
+                f"unter der {FREIGRENZE:,.0f}-€-Freigrenze. **Netto bleibt {total_pnl:+,.2f} €** "
+                f"(Gebühren sind schon abgezogen)."
+            )
+        else:
+            st.warning(
+                f"Über der Freigrenze: geschätzte Steuer **−{tax:,.2f} €** → "
+                f"**netto nach Steuer ca. {total_pnl - tax:+,.2f} €**."
+            )
+        st.caption("ℹ️ Nur informativ, **keine Steuerberatung**. Die echte Steuer hängt von deinem "
+                   "gesamten Jahreseinkommen, der Haltedauer, Soli und ggf. Kirchensteuer ab. Für "
+                   "Aktien/ETFs gilt stattdessen die Abgeltungsteuer (25 % + Soli).")
+
     st.markdown("**Offene Positionen**")
     pos = store.positions_snapshot("paper")
     if pos.empty:
