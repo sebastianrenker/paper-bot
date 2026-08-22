@@ -394,20 +394,58 @@ def render_live_paper(store: Store, settings) -> None:
     except Exception:  # noqa: BLE001
         age = 9e9
     live = age < 120
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Status", "LIVE" if live else "gestoppt",
+    # ---- Euro-Fokus: wie viel Plus/Minus in echten Euro? -----------------
+    start = settings.initial_capital
+    eq = hb.get("equity") or start
+    trades_df = store.trades(source="paper")
+    realized = float(trades_df["pnl"].sum()) if not trades_df.empty else 0.0
+    total_pnl = eq - start          # Gesamt-Ergebnis in Euro
+    unrealized = total_pnl - realized  # Rest steckt in offenen Positionen
+
+    def _wort(v: float) -> str:
+        return "Gewinn" if v > 0 else ("Verlust" if v < 0 else "±0")
+
+    h1, h2, h3 = st.columns(3)
+    h1.metric(f"💰 {_wort(total_pnl)} (Spielgeld)", f"{total_pnl:+,.2f} €",
+              f"{(eq/start-1)*100:+.2f} %")
+    h2.metric("Kontostand", f"{eq:,.2f} €", f"Start: {start:,.0f} €", delta_color="off")
+    h3.metric("Status", "LIVE" if live else "gestoppt",
               f"aktiv (vor {age:.0f}s)" if live else "kein Lebenszeichen",
               delta_color="normal" if live else "off")
+
+    b1, b2, b3, b4 = st.columns(4)
+    b1.metric("✅ Realisiert (fest verbucht)", f"{realized:+,.2f} €")
+    b2.metric("⏳ Offen (schwankt noch)", f"{unrealized:+,.2f} €")
+    b3.metric("Offene Positionen", int(hb.get("open_positions") or 0))
+    b4.metric("Tagesverlust-Limit", f"{(hb.get('daily_pnl_pct') or 0)*100:+.2f} %")
+
+    st.markdown(
+        f"👉 Aus **{start:,.0f} € Startkapital** sind **{eq:,.2f} €** geworden — "
+        f"also **{total_pnl:+,.2f} € {_wort(total_pnl)}**. Davon sind **{realized:+,.2f} €** "
+        f"aus abgeschlossenen Trades schon fest, **{unrealized:+,.2f} €** schwanken noch mit "
+        f"den offenen Positionen. *(Alles Spielgeld — kein echtes Geld im Einsatz.)*"
+    )
     if not live:
         st.warning("Der Bot laeuft gerade **nicht** (kein aktuelles Lebenszeichen). "
                    "Klicke oben **BOT STARTEN**. Offene Positionen unten sind der letzte Stand.")
-    start = settings.initial_capital
-    eq = hb.get("equity") or start
-    c2.metric("Kapital (Paper)", f"{eq:,.2f}", f"{(eq/start-1)*100:+.2f} %", delta_color="off")
-    c3.metric("Offene Positionen", int(hb.get("open_positions") or 0))
-    c4.metric("Tagesverlust", f"{(hb.get('daily_pnl_pct') or 0)*100:+.2f} %")
     if hb.get("tripped"):
         st.error(f"CIRCUIT BREAKER aktiv — Handel gestoppt. Grund: {hb.get('note','')}")
+
+    # ---- Gewinn/Verlust je Strategie in Euro -----------------------------
+    if not trades_df.empty:
+        with st.expander(f"📊 Wer verdient (oder verliert) — je Strategie in Euro  ·  "
+                         f"{len(trades_df)} abgeschlossene Trades", expanded=True):
+            g = trades_df.assign(Gewinner=trades_df["pnl"] > 0).groupby("strategy").agg(
+                Euro=("pnl", "sum"), Trades=("pnl", "count"), Trefferquote=("Gewinner", "mean"))
+            g = g.sort_values("Euro", ascending=False).reset_index()
+            g["Ergebnis"] = g["Euro"].map(lambda v: f"{v:+,.2f} €")
+            g["Trefferquote"] = (g["Trefferquote"] * 100).map(lambda v: f"{v:.0f} %")
+            g = g.rename(columns={"strategy": "Strategie"})
+            st.dataframe(g[["Strategie", "Ergebnis", "Trades", "Trefferquote"]],
+                         width="stretch", hide_index=True)
+            st.caption("Grün = diese Strategie hat auf dem Spielkonto Euro gebracht, "
+                       "Rot/Minus = gekostet. Bei sehr wenigen Trades ist das noch Zufall, "
+                       "kein Beweis — erst viele Trades zeigen den echten Trend.")
 
     st.markdown("**Offene Positionen**")
     pos = store.positions_snapshot("paper")
