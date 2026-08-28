@@ -1,26 +1,27 @@
 # Bot-Status-Report (Paper-Trading, echte Marktdaten)
 
-*Erstellt: 2026-08-28 00:52:05 UTC — reine Fakten, keine Prognose.*
+*Erstellt: 2026-08-28 21:52:30 UTC — reine Fakten, keine Prognose.*
 
 ## Betrieb
 
 - **Status:** LÄUFT (LIVE)
 - **Letztes Lebenszeichen:** vor 0s
-- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (195.6 h)
+- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (216.6 h)
 
 ## Kapital
 
 - **Start:** 500.00 € (Paper, simuliert)
-- **Aktuell:** 509.82 €
-- **Veränderung:** +9.82 € (+1.965 %)
-- **Offene Positionen:** 1
-- **Tagesverlust (heute):** +1.96 %
+- **Aktuell:** 511.76 €
+- **Veränderung:** +11.76 € (+2.352 %)
+- **Offene Positionen:** 2
+- **Tagesverlust (heute):** +2.35 %
 
 ## Offene Positionen
 
 | Symbol | Strategie | Richtung | Einstieg | Kurs | Unrealisiert |
 |---|---|---|---|---|---|
-| ADA/USDT | roc_momentum | SHORT | 0.2180 | 0.2139 | +0.70 |
+| ADA/USDT | roc_momentum | SHORT | 0.2180 | 0.2019 | +2.72 |
+| ETH/USDT | connors_rsi2 | LONG | 2436.9178 | 2435.7000 | -0.04 |
 
 ## Abgeschlossene Paper-Trades
 
