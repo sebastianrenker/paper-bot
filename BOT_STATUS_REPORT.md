@@ -1,37 +1,36 @@
 # Bot-Status-Report (Paper-Trading, echte Marktdaten)
 
-*Erstellt: 2026-08-28 23:33:26 UTC — reine Fakten, keine Prognose.*
+*Erstellt: 2026-08-29 00:03:29 UTC — reine Fakten, keine Prognose.*
 
 ## Betrieb
 
 - **Status:** LÄUFT (LIVE)
 - **Letztes Lebenszeichen:** vor 0s
-- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (218.3 h)
+- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (218.8 h)
 
 ## Kapital
 
 - **Start:** 500.00 € (Paper, simuliert)
-- **Aktuell:** 511.76 €
-- **Veränderung:** +11.76 € (+2.352 %)
-- **Offene Positionen:** 2
-- **Tagesverlust (heute):** +2.35 %
+- **Aktuell:** 511.69 €
+- **Veränderung:** +11.69 € (+2.338 %)
+- **Offene Positionen:** 1
+- **Tagesverlust (heute):** +2.34 %
 
 ## Offene Positionen
 
 | Symbol | Strategie | Richtung | Einstieg | Kurs | Unrealisiert |
 |---|---|---|---|---|---|
-| ADA/USDT | roc_momentum | SHORT | 0.2180 | 0.2019 | +2.72 |
-| ETH/USDT | connors_rsi2 | LONG | 2436.9178 | 2435.7000 | -0.04 |
+| ADA/USDT | roc_momentum | SHORT | 0.2180 | 0.2030 | +2.54 |
 
 ## Abgeschlossene Paper-Trades
 
-- **Anzahl:** 9
-- **Summe PnL:** +9.90 €
+- **Anzahl:** 10
+- **Summe PnL:** +10.01 €
 
 | Strategie | Trades | Summe PnL | Ø PnL |
 |---|---|---|---|
 | roc_momentum | 7 | +8.42 | +1.203 |
-| connors_rsi2 | 2 | +1.48 | +0.738 |
+| connors_rsi2 | 3 | +1.59 | +0.531 |
 
 ## Circuit Breaker / Risiko-Ereignisse
 
