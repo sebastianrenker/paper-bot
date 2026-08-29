@@ -726,6 +726,9 @@ def render_heatmap(df: pd.DataFrame) -> None:
         width="stretch",
     )
     st.caption("Zellwert = bester Score dieser Strategie im jeweiligen Markt/Timeframe.")
+    st.divider()
+    st.caption("© 2026 Sebastian Renker · MIT-Lizenz · "
+               "github.com/sebastianrenker/paper-bot")
 
 
 if __name__ == "__main__":
