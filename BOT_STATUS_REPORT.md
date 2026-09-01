@@ -1,36 +1,34 @@
 # Bot-Status-Report (Paper-Trading, echte Marktdaten)
 
-*Erstellt: 2026-09-01 19:34:01 UTC — reine Fakten, keine Prognose.*
+*Erstellt: 2026-09-01 20:06:36 UTC — reine Fakten, keine Prognose.*
 
 ## Betrieb
 
 - **Status:** LÄUFT (LIVE)
 - **Letztes Lebenszeichen:** vor 0s
-- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (310.3 h)
+- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (310.8 h)
 
 ## Kapital
 
 - **Start:** 500.00 € (Paper, simuliert)
-- **Aktuell:** 512.04 €
-- **Veränderung:** +12.04 € (+2.407 %)
-- **Offene Positionen:** 1
-- **Tagesverlust (heute):** +2.41 %
+- **Aktuell:** 510.41 €
+- **Veränderung:** +10.41 € (+2.083 %)
+- **Offene Positionen:** 0
+- **Tagesverlust (heute):** +2.08 %
 
 ## Offene Positionen
 
-| Symbol | Strategie | Richtung | Einstieg | Kurs | Unrealisiert |
-|---|---|---|---|---|---|
-| ETH/USDT | connors_rsi2 | LONG | 2450.8348 | 2449.6100 | -0.03 |
+Keine offenen Positionen.
 
 ## Abgeschlossene Paper-Trades
 
-- **Anzahl:** 11
-- **Summe PnL:** +12.99 €
+- **Anzahl:** 12
+- **Summe PnL:** +11.37 €
 
 | Strategie | Trades | Summe PnL | Ø PnL |
 |---|---|---|---|
 | roc_momentum | 8 | +11.40 | +1.425 |
-| connors_rsi2 | 3 | +1.59 | +0.531 |
+| connors_rsi2 | 4 | -0.02 | -0.006 |
 
 ## Circuit Breaker / Risiko-Ereignisse
 
