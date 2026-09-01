@@ -1,24 +1,26 @@
 # Bot-Status-Report (Paper-Trading, echte Marktdaten)
 
-*Erstellt: 2026-09-01 20:06:36 UTC — reine Fakten, keine Prognose.*
+*Erstellt: 2026-09-01 20:36:45 UTC — reine Fakten, keine Prognose.*
 
 ## Betrieb
 
 - **Status:** LÄUFT (LIVE)
 - **Letztes Lebenszeichen:** vor 0s
-- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (310.8 h)
+- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (311.3 h)
 
 ## Kapital
 
 - **Start:** 500.00 € (Paper, simuliert)
-- **Aktuell:** 510.41 €
-- **Veränderung:** +10.41 € (+2.083 %)
-- **Offene Positionen:** 0
-- **Tagesverlust (heute):** +2.08 %
+- **Aktuell:** 510.29 €
+- **Veränderung:** +10.29 € (+2.059 %)
+- **Offene Positionen:** 1
+- **Tagesverlust (heute):** +2.06 %
 
 ## Offene Positionen
 
-Keine offenen Positionen.
+| Symbol | Strategie | Richtung | Einstieg | Kurs | Unrealisiert |
+|---|---|---|---|---|---|
+| ETH/USDT | connors_rsi2 | LONG | 2420.4896 | 2419.2800 | -0.05 |
 
 ## Abgeschlossene Paper-Trades
 
