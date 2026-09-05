@@ -1,12 +1,12 @@
 # Bot-Status-Report (Paper-Trading, echte Marktdaten)
 
-*Erstellt: 2026-09-05 19:04:54 UTC — reine Fakten, keine Prognose.*
+*Erstellt: 2026-09-05 19:33:52 UTC — reine Fakten, keine Prognose.*
 
 ## Betrieb
 
 - **Status:** LÄUFT (LIVE)
 - **Letztes Lebenszeichen:** vor 0s
-- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (405.8 h)
+- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (406.3 h)
 
 ## Kapital
 
