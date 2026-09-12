@@ -1,26 +1,26 @@
 # Bot-Status-Report (Paper-Trading, echte Marktdaten)
 
-*Erstellt: 2026-09-11 23:45:38 UTC — reine Fakten, keine Prognose.*
+*Erstellt: 2026-09-12 02:31:35 UTC — reine Fakten, keine Prognose.*
 
 ## Betrieb
 
 - **Status:** LÄUFT (LIVE)
 - **Letztes Lebenszeichen:** vor 0s
-- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (554.5 h)
+- **Läuft seit:** 2026-08-19T21:16:10.725981+00:00 (557.3 h)
 
 ## Kapital
 
 - **Start:** 500.00 € (Paper, simuliert)
-- **Aktuell:** 512.69 €
-- **Veränderung:** +12.69 € (+2.538 %)
+- **Aktuell:** 512.65 €
+- **Veränderung:** +12.65 € (+2.530 %)
 - **Offene Positionen:** 1
-- **Tagesverlust (heute):** +2.54 %
+- **Tagesverlust (heute):** +2.53 %
 
 ## Offene Positionen
 
 | Symbol | Strategie | Richtung | Einstieg | Kurs | Unrealisiert |
 |---|---|---|---|---|---|
-| ADA/USDT | roc_momentum | SHORT | 0.2119 | 0.2062 | +0.99 |
+| ADA/USDT | roc_momentum | SHORT | 0.2119 | 0.2064 | +0.95 |
 
 ## Abgeschlossene Paper-Trades
 
